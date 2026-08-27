@@ -1,0 +1,2 @@
+# Authenova
+# Authenova  **Authenova** is an AI-powered identity and document verification platform designed to detect fake identities, forged documents, and suspicious credentials. It combines **OCR, document analysis, face verification, and intelligent fraud detection** to provide fast, reliable, and secure identity screening for organizations.
