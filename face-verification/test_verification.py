@@ -2,21 +2,39 @@ from app.embedder import generate_embedding
 from app.verifier import verify_faces
 
 
-reference_image = "test_images/face_image.png"
-test_image = "test_images/different_face.jpg"
+def test_same_person():
+    image1 = "test_images/face_image.png"
+    image2 = "test_images/face_image.png"
 
-print("Generating reference embedding...")
-reference_embedding = generate_embedding(reference_image)
+    embedding1 = generate_embedding(image1)
+    embedding2 = generate_embedding(image2)
 
-print("Generating test embedding...")
-test_embedding = generate_embedding(test_image)
+    similarity, result = verify_faces(
+        embedding1,
+        embedding2,
+        threshold=0.70
+    )
 
-similarity, result = verify_faces(
-    reference_embedding,
-    test_embedding
-)
+    print(f"\nSame-person similarity: {similarity}")
+    print(f"Result: {result}")
 
-print()
-print("===== FACE VERIFICATION =====")
-print("Similarity:", similarity)
-print("Result:", result)
+    assert result == "PASS"
+
+
+def test_different_person():
+    image1 = "test_images/face_image.png"
+    image2 = "test_images/different_face.png"
+
+    embedding1 = generate_embedding(image1)
+    embedding2 = generate_embedding(image2)
+
+    similarity, result = verify_faces(
+        embedding1,
+        embedding2,
+        threshold=0.70
+    )
+
+    print(f"\nDifferent-person similarity: {similarity}")
+    print(f"Result: {result}")
+
+    assert result == "FAIL"
