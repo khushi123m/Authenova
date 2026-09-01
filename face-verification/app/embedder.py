@@ -1,4 +1,3 @@
-
 import numpy as np
 from PIL import Image
 from io import BytesIO
@@ -6,7 +5,7 @@ from io import BytesIO
 from keras_facenet import FaceNet
 
 
-# Load the FaceNet model once when the application starts
+# Load FaceNet model once when the application starts
 embedder = FaceNet()
 
 
@@ -15,7 +14,7 @@ def generate_embedding(image_data):
     Generate a face embedding from image bytes.
 
     Args:
-        image_data: Image bytes.
+        image_data: Raw image bytes.
 
     Returns:
         NumPy array containing the face embedding.
@@ -25,20 +24,33 @@ def generate_embedding(image_data):
     """
 
     try:
-        # Convert bytes into a PIL image
+        # -----------------------------------------
+        # 1. Convert uploaded bytes to PIL image
+        # -----------------------------------------
         image = Image.open(BytesIO(image_data)).convert("RGB")
 
-        # Convert PIL image to NumPy array
+        # -----------------------------------------
+        # 2. Convert PIL image to NumPy array
+        # -----------------------------------------
         image_array = np.asarray(image)
 
-        # Generate embeddings
-        embeddings = embedder.extract(image_array, threshold=0.95)
+        # -----------------------------------------
+        # 3. Detect face and generate embedding
+        # -----------------------------------------
+        embeddings = embedder.extract(
+            image_array,
+            threshold=0.70
+        )
 
-        # No face detected
+        # -----------------------------------------
+        # 4. Check whether a face was detected
+        # -----------------------------------------
         if not embeddings:
             raise ValueError("No face detected in image.")
 
-        # Use the first detected face
+        # -----------------------------------------
+        # 5. Use the first detected face
+        # -----------------------------------------
         embedding = embeddings[0]["embedding"]
 
         return np.asarray(embedding, dtype=np.float32)
@@ -47,5 +59,6 @@ def generate_embedding(image_data):
         raise
 
     except Exception as e:
-        raise ValueError(f"Unable to process image: {str(e)}")
-
+        raise ValueError(
+            f"Unable to process image: {str(e)}"
+        )
