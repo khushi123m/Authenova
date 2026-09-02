@@ -1,5 +1,9 @@
 import datetime
 import re
+
+#============================================================
+# FIELD-LEVEL VALIDATION CHECKS
+# ============================================================
 def check_expiry(expiry_text):
     expiry_date=datetime.datetime.strptime(expiry_text,"%Y-%m-%d").date()
     today=datetime.date.today()
@@ -55,40 +59,9 @@ def check_nationality(nationality):
     else:
         return {"status": "PASS", "reason": f"Nationality '{nationality}' extracted successfully."}
 
-def calculate_validation_risk(validation_report):
-    total_fields = len(validation_report)
-    failed_fields = 0
-
-    for field_name in validation_report:
-        if validation_report[field_name]["status"] == "FAIL":
-            failed_fields = failed_fields + 1
-
-    risk_score = (failed_fields / total_fields) * 100
-    return risk_score
-
-def calculate_tampering_risk(tampering_score):
-    risk_score = round(tampering_score * 100, 2)
-
-    if risk_score < 30:
-        reason = f"Low tampering risk ({risk_score:.0f}% probability of digital editing)."
-    elif risk_score < 70:
-        reason = f"Moderate tampering risk ({risk_score:.0f}% probability of digital editing)."
-    else:
-        reason = f"High tampering risk ({risk_score:.0f}% probability of digital editing)."
-
-    return {"risk_score": risk_score, "reason": reason}
-
-def calculate_face_risk(similarity_score):
-    risk_score = round(100 - (similarity_score * 100), 2)
-
-    if risk_score < 30:
-        reason = f"Low face-mismatch risk ({risk_score:.0f}% risk, faces closely match)."
-    elif risk_score < 70:
-        reason = f"Moderate face-mismatch risk ({risk_score:.0f}% risk, partial match)."
-    else:
-        reason = f"High face-mismatch risk ({risk_score:.0f}% risk, faces do not match well)."
-
-    return {"risk_score": risk_score, "reason": reason}
+# ============================================================
+# COMBINED VALIDATOR (deliverable 1)
+# ============================================================
 
 def validate_document(document):
     report = {}
@@ -138,27 +111,150 @@ def validate_document(document):
    
     return report
 
+def get_failed_validation_reasons(validation_report):
+    failed_reasons = []
+ 
+    for field_name in validation_report:
+        field_result = validation_report[field_name]
+        if field_result["status"] == "FAIL":
+            failed_reasons.append(field_result["reason"])
+ 
+    return failed_reasons
 
-sample_document = {
-    "document_type": "aadhaar",
-    "name": "TEST USER",
-    "nationality": "Indian",
-    "date_of_birth": "2000-01-15",
-    "aadhaar_number": "123456781234",
-    "expiry_date": "2030-05-10"
-}
+# ============================================================
+# RISK CONVERSION FUNCTIONS
+# ============================================================
+ 
+def calculate_validation_risk(validation_report):
+    total_fields = len(validation_report)
+    failed_fields = 0
+ 
+    for field_name in validation_report:
+        if validation_report[field_name]["status"] == "FAIL":
+            failed_fields = failed_fields + 1
+ 
+    risk_score = round((failed_fields / total_fields) * 100, 2)
+    return risk_score
 
-sample_report = validate_document(sample_document)
-print(sample_report)
-print(calculate_validation_risk(sample_report))
+def calculate_tampering_risk(tampering_score):
+    risk_score = round(tampering_score * 100, 2)
+ 
+    if risk_score <= 30:
+        reason = f"Low tampering risk ({risk_score:.0f}% probability of digital editing)."
+    elif risk_score <= 70:
+        reason = f"Moderate tampering risk ({risk_score:.0f}% probability of digital editing)."
+    else:
+        reason = f"High tampering risk ({risk_score:.0f}% probability of digital editing)."
+ 
+    return {"risk_score": risk_score, "reason": reason}
 
-print(calculate_tampering_risk(0.15))
-print(calculate_tampering_risk(0.55))
-print(calculate_tampering_risk(0.90))
+def calculate_face_risk(similarity_score):
+    risk_score = round(100 - (similarity_score * 100), 2)
+ 
+    if risk_score <= 30:
+        reason = f"Low face-mismatch risk ({risk_score:.0f}% risk, faces closely match)."
+    elif risk_score <= 70:
+        reason = f"Moderate face-mismatch risk ({risk_score:.0f}% risk, partial match)."
+    else:
+        reason = f"High face-mismatch risk ({risk_score:.0f}% risk, faces do not match well)."
+ 
+    return {"risk_score": risk_score, "reason": reason}
 
-print(calculate_face_risk(0.95))   # very high similarity — what risk level do you expect?
-print(calculate_face_risk(0.60))   # moderate similarity
-print(calculate_face_risk(0.20))   # low similarity — what risk level do you expect?
+def calculate_completeness_risk(document):
+    required_fields = ["document_type", "name", "nationality", "date_of_birth", "expiry_date"]
+    total_required = len(required_fields)
+    missing_count = 0
+ 
+    for field_name in required_fields:
+        if field_name not in document:
+            missing_count = missing_count + 1
+ 
+    risk_score = round((missing_count / total_required) * 100, 2)
+ 
+    if risk_score == 0:
+        reason = "All required fields are present."
+    else:
+        reason = f"{missing_count} out of {total_required} required fields are missing."
+ 
+    return {"risk_score": risk_score, "reason": reason}
+
+# ============================================================
+# FINAL WEIGHTED RISK ENGINE (deliverable 2)
+# Weights: validation 20%, tampering 40%, face verification 30%, completeness 10%
+# ============================================================
+ 
+def calculate_final_risk(document, tampering_score, similarity_score):
+    validation_report = validate_document(document)
+    validation_risk_score = calculate_validation_risk(validation_report)
+    failed_reasons = get_failed_validation_reasons(validation_report)
+ 
+    if len(failed_reasons) == 0:
+        validation_reason = "All validation checks passed."
+    else:
+        validation_reason = "Validation issues: " + "; ".join(failed_reasons)
+ 
+    tampering_result = calculate_tampering_risk(tampering_score)
+    face_result = calculate_face_risk(similarity_score)
+    completeness_result = calculate_completeness_risk(document)
+ 
+    final_score = (
+        (validation_risk_score * 0.20) +
+        (tampering_result["risk_score"] * 0.40) +
+        (face_result["risk_score"] * 0.30) +
+        (completeness_result["risk_score"] * 0.10)
+    )
+    final_score = round(final_score, 2)
+
+    if final_score <= 30:
+        risk_level = "LOW"
+    elif final_score <= 70:
+        risk_level = "MEDIUM"
+    else:
+        risk_level = "HIGH"
+ 
+    reasons = [
+        validation_reason,
+        tampering_result["reason"],
+        face_result["reason"],
+        completeness_result["reason"]
+    ]
+ 
+    return {
+        "risk_score": final_score,
+        "risk_level": risk_level,
+        "reasons": reasons
+    }
+
+# ============================================================
+# TEST CALLS
+# ============================================================
+ 
+if __name__ == "__main__":
+    sample_document = {
+        "document_type": "aadhaar",
+        "name": "TEST USER",
+        "nationality": "Indian",
+        "date_of_birth": "2000-01-15",
+        "aadhaar_number": "123456789012",
+        "expiry_date": "2030-05-10"
+    }
+ 
+    bad_document = {
+        "document_type": "aadhaar",
+        "name": "TEST USER",
+        "nationality": "Indian",
+        "date_of_birth": "2000-01-15",
+        "aadhaar_number": "123456789012",
+        "expiry_date": "2024-01-01"
+    }
+ 
+    print(calculate_final_risk(sample_document, tampering_score=0.15, similarity_score=0.95))
+    print(calculate_final_risk(bad_document, tampering_score=0.15, similarity_score=0.95))
+
+print(calculate_tampering_risk(0.30))
+print(calculate_tampering_risk(0.70))
+print(calculate_face_risk(0.70))
+print(calculate_face_risk(0.30))
 
 
 
