@@ -2,30 +2,30 @@ import cv2
 import pytesseract
 from pytesseract import Output
 
-image = cv2.imread("test_document.png")
 
-extracted_text = pytesseract.image_to_string(image)
+def extract_text_and_confidence(image_path):
+    image = cv2.imread(image_path)
 
-print("--- RAW TEXT TESSERACT FOUND ---")
-print(extracted_text)
+    extracted_text = pytesseract.image_to_string(image)
 
-data = pytesseract.image_to_data(image, output_type=Output.DICT)
+    data = pytesseract.image_to_data(image, output_type=Output.DICT)
 
-confidences = []   # <-- NEW: empty bucket to collect confidence numbers
+    confidences = []
+    for i in range(len(data["text"])):
+        word = data["text"][i]
+        confidence = data["conf"][i]
+        if word.strip():
+            confidences.append(confidence)
 
-print("\n--- WORD-LEVEL DATA ---")
-for i in range(len(data["text"])):
-    word = data["text"][i]
-    confidence = data["conf"][i]
-    if word.strip():
-        print(f"word: {word!r}   confidence: {confidence}")
-        confidences.append(confidence)   # <-- NEW: save this number into the bucket
+    average_confidence = round(sum(confidences) / len(confidences) / 100, 2)
 
-print("\n--- ALL COLLECTED CONFIDENCES ---")
-print(confidences)
-average_confidence = sum(confidences) / len(confidences)
-average_confidence = round(average_confidence / 100, 2)
+    return extracted_text, average_confidence
 
-print("\n--- AVERAGE CONFIDENCE ---")
-print(average_confidence)
 
+if __name__ == "__main__":
+    text, confidence = extract_text_and_confidence("test_document.png")
+
+    print("--- RAW TEXT ---")
+    print(text)
+    print("--- CONFIDENCE ---")
+    print(confidence)
