@@ -23,8 +23,7 @@ def extract_text_and_confidence(image_path):
 
 
 if __name__ == "__main__":
-    text, confidence = extract_text_and_confidence("test_document.png")
-
+    text, confidence = extract_text_and_confidence("../../../../data/samples/documents/test_document.png")
     print("--- RAW TEXT ---")
     print(text)
     print("--- CONFIDENCE ---")
