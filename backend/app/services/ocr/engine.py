@@ -145,9 +145,14 @@ def extract_document(image_path):
     
 
 if __name__ == "__main__":
-    result = extract_document(
-        "../../../../data/samples/documents/test_document.png"
-    )
+    import sys
+
+    if len(sys.argv) > 1:
+        image_path = sys.argv[1]
+    else:
+        image_path = "../../../../data/samples/documents/test_document.png"
+
+    result = extract_document(image_path)
     print(json.dumps(result, indent=4))
 
     
