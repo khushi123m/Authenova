@@ -1,14 +1,68 @@
+
+import numpy as np
 import json
 import re
 import cv2
 import pytesseract
 from pytesseract import Output
 
+def deskew_image(image):
+    """
+    Detect and correct rotation in a document photo.
+
+    How it works: threshold the image to find where the TEXT pixels are
+    (not the background), then find the smallest rectangle that contains
+    all of them (cv2.minAreaRect). That rectangle's angle tells us how
+    tilted the text is. We rotate the whole image back by that angle.
+    """
+    gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
+    _, thresh = cv2.threshold(gray, 0, 255, cv2.THRESH_BINARY_INV + cv2.THRESH_OTSU)
+
+    coords = np.column_stack(np.where(thresh > 0))
+    angle = cv2.minAreaRect(coords)[-1]
+
+    # minAreaRect returns angles in a slightly unintuitive range;
+    # this correction maps it to the actual rotation needed.
+    if angle < -45:
+        angle = -(90 + angle)
+    else:
+        angle = -angle
+
+    (h, w) = image.shape[:2]
+    center = (w // 2, h // 2)
+    rotation_matrix = cv2.getRotationMatrix2D(center, angle, 1.0)
+    deskewed = cv2.warpAffine(
+        image, rotation_matrix, (w, h),
+        flags=cv2.INTER_CUBIC, borderMode=cv2.BORDER_CONSTANT,
+        borderValue=(255, 255, 255)
+    )
+    return deskewed
+
+
+def preprocess_image(image_path):
+    """
+    Full preprocessing pipeline: load -> deskew -> grayscale ->
+    denoise -> threshold. Returns a cleaned-up image ready for Tesseract.
+    """
+    image = cv2.imread(image_path)
+    if image is None:
+        raise FileNotFoundError(f"Could not read image at: {image_path}")
+
+    deskewed = deskew_image(image)
+
+    gray = cv2.cvtColor(deskewed, cv2.COLOR_BGR2GRAY)
+    denoised = cv2.fastNlMeansDenoising(gray, h=10)
+    _, thresholded = cv2.threshold(
+        denoised, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU
+    )
+
+    return thresholded
 
 def extract_text_and_confidence(image_path):
-    image = cv2.imread(image_path)
+    image = preprocess_image(image_path)   # <-- changed from cv2.imread(image_path)
 
     extracted_text = pytesseract.image_to_string(image)
+    
 
     data = pytesseract.image_to_data(image, output_type=Output.DICT)
 
@@ -98,4 +152,4 @@ if __name__ == "__main__":
 
     
 
-    print(json.dumps(result, indent=4))
+    
