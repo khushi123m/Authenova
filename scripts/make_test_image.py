@@ -10,8 +10,10 @@ font = ImageFont.truetype("arial.ttf", 24)
 lines = [
     "REPUBLIC OF INDIA PASSPORT",
     "NAME: TEST USER",
+    "NATIONALITY: INDIAN",
     "PASSPORT NO P1234567",
     "DATE OF BIRTH 02/10/2007",
+    "DATE OF ISSUE 15/01/2020",
     "DATE OF EXPIRY 10/05/2030",
 ]
 
@@ -20,5 +22,5 @@ for line in lines:
     draw.text((20, y_position), line, fill="black", font=font)
     y_position += 40
 
-image.save("test_document.png")
+image.save("../data/samples/documents/test_document.png")
 print("Saved test_document.png")
