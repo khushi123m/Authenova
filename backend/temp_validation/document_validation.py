@@ -137,6 +137,15 @@ def calculate_validation_risk(validation_report):
     return risk_score
 
 def calculate_tampering_risk(tampering_score):
+    # Guard: tampering module may fail to produce a score (e.g. corrupted image).
+    # If so, don't crash — fall back to a neutral score and say so honestly.
+    if tampering_score is None or not isinstance(tampering_score, (int, float)):
+        return {
+            "risk_score": 50.0,
+            "reason": "Tampering score unavailable — using neutral estimate.",
+            "unavailable": True
+        }
+ 
     risk_score = round(tampering_score * 100, 2)
  
     if risk_score <= 30:
@@ -146,9 +155,18 @@ def calculate_tampering_risk(tampering_score):
     else:
         reason = f"High tampering risk ({risk_score:.0f}% probability of digital editing)."
  
-    return {"risk_score": risk_score, "reason": reason}
+    return {"risk_score": risk_score, "reason": reason, "unavailable": False}
 
 def calculate_face_risk(similarity_score):
+    # Guard: face matching module may fail to produce a score.
+    # If so, don't crash — fall back to a neutral score and say so honestly.
+    if similarity_score is None or not isinstance(similarity_score, (int, float)):
+        return {
+            "risk_score": 50.0,
+            "reason": "Face similarity score unavailable — using neutral estimate.",
+            "unavailable": True
+        }
+
     risk_score = round(100 - (similarity_score * 100), 2)
  
     if risk_score <= 30:
@@ -158,7 +176,7 @@ def calculate_face_risk(similarity_score):
     else:
         reason = f"High face-mismatch risk ({risk_score:.0f}% risk, faces do not match well)."
  
-    return {"risk_score": risk_score, "reason": reason}
+    return {"risk_score": risk_score, "reason": reason, "unavailable": False}
 
 def calculate_completeness_risk(document):
     required_fields = ["document_type", "name", "nationality", "date_of_birth", "expiry_date"]
@@ -169,15 +187,34 @@ def calculate_completeness_risk(document):
         if field_name not in document:
             missing_count = missing_count + 1
  
-    risk_score = round((missing_count / total_required) * 100, 2)
+    missing_risk = (missing_count / total_required) * 100
  
-    if risk_score == 0:
-        reason = "All required fields are present."
+    # OCR confidence risk: only factor this in if OCR actually provided a confidence score.
+    if "ocr_confidence" in document:
+        ocr_confidence = document["ocr_confidence"]
+        ocr_risk = 100 - (ocr_confidence * 100)
     else:
-        reason = f"{missing_count} out of {total_required} required fields are missing."
+        ocr_risk = 0  # no confidence score provided, so it doesn't add extra risk
+ 
+    # Combine both signals with equal weight (50/50) into one completeness score.
+    risk_score = round((missing_risk * 0.5) + (ocr_risk * 0.5), 2)
+ 
+    reasons = []
+ 
+    if missing_count == 0:
+        reasons.append("All required fields are present.")
+    else:
+        reasons.append(f"{missing_count} out of {total_required} required fields are missing.")
+
+    if "ocr_confidence" in document:
+        reasons.append(f"OCR confidence was {ocr_confidence * 100:.0f}%.")
+    else:
+        reasons.append("No OCR confidence score was provided.")
+ 
+    reason = " ".join(reasons)
  
     return {"risk_score": risk_score, "reason": reason}
-
+ 
 # ============================================================
 # FINAL WEIGHTED RISK ENGINE (deliverable 2)
 # Weights: validation 20%, tampering 40%, face verification 30%, completeness 10%
@@ -218,7 +255,12 @@ def calculate_final_risk(document, tampering_score, similarity_score):
         face_result["reason"],
         completeness_result["reason"]
     ]
- 
+
+ # If any module's score was estimated (not real), flag this clearly so the
+    # officer knows the risk score is partly a guess, not fully backed by data.
+    if tampering_result.get("unavailable") or face_result.get("unavailable"):
+        reasons.append("Note: one or more scores were unavailable and estimated — treat this result with caution.")
+    
     return {
         "risk_score": final_score,
         "risk_level": risk_level,
@@ -250,11 +292,8 @@ if __name__ == "__main__":
  
     print(calculate_final_risk(sample_document, tampering_score=0.15, similarity_score=0.95))
     print(calculate_final_risk(bad_document, tampering_score=0.15, similarity_score=0.95))
+    
 
-print(calculate_tampering_risk(0.30))
-print(calculate_tampering_risk(0.70))
-print(calculate_face_risk(0.70))
-print(calculate_face_risk(0.30))
 
 
 
