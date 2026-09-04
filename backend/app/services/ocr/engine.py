@@ -58,27 +58,35 @@ def preprocess_image(image_path):
 
     return thresholded
 
+
 def extract_text_and_confidence(image_path):
-    image = preprocess_image(image_path)   # <-- changed from cv2.imread(image_path)
+    image = preprocess_image(image_path)
 
     extracted_text = pytesseract.image_to_string(image)
-    
 
-    data = pytesseract.image_to_data(image, output_type=Output.DICT)
+    data = pytesseract.image_to_data(
+        image,
+        output_type=Output.DICT
+    )
 
     confidences = []
 
     for i in range(len(data["text"])):
-        word = data["text"][i]
-        confidence = data["conf"][i]
+        word = data["text"][i].strip()
+        confidence = float(data["conf"][i])
 
-        if word.strip():
+        if word and confidence >= 0:
             confidences.append(confidence)
 
-    average_confidence = round(sum(confidences) / len(confidences) / 100, 2)
+    if confidences:
+        average_confidence = round(
+            sum(confidences) / len(confidences) / 100,
+            2
+        )
+    else:
+        average_confidence = 0.0
 
     return extracted_text, average_confidence
-
 
 def extract_passport_number(text):
     match = re.search(r"\b[A-Z]\d{7}\b", text)
