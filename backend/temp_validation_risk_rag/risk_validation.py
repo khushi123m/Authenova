@@ -38,7 +38,7 @@ def check_visa_format(visa_number):
     # NOTE: placeholder format (2 letters + 7 digits) — visa number formats vary
     # by issuing country. Replace with actual required format if the project
     # targets a specific visa type.
-    pattern = r"^[A-Z]{2}\d{7}$"
+    pattern = r"^\d{6}$|^\d{8}$"
 
     if re.fullmatch(pattern, visa_number):
         return {"status": "PASS", "reason": "Visa number format is valid."}
