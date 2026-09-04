@@ -46,6 +46,18 @@ def check_visa_format(visa_number):
         return {"status": "FAIL", "reason": f"'{visa_number}' does not match expected format (2 letters + 7 digits)."}
 
 
+def check_permit_format(permit_number):
+    # NOTE: placeholder format (6 to 10 digits) — permit formats vary widely
+    # by type and issuing authority. Replace with actual required format if
+    # the project targets a specific permit type.
+    pattern = r"^\d{6,10}$"
+
+    if re.fullmatch(pattern, permit_number):
+        return {"status": "PASS", "reason": "Permit number format is valid."}
+    else:
+        return {"status": "FAIL", "reason": f"'{permit_number}' does not match expected format (6 to 10 digits)."}
+
+
 def check_document_type(document_type):
     allowed_types = ["passport", "visa", "aadhaar", "permit"]
     normalized_type = document_type.lower()
@@ -132,6 +144,12 @@ def validate_document(document):
             report["id_number"] = check_visa_format(document["visa_number"])
         else:
             report["id_number"] = {"status": "FAIL", "reason": "Visa number is missing."}
+
+    elif doc_type == "permit":
+        if "permit_number" in document:
+            report["id_number"] = check_permit_format(document["permit_number"])
+        else:
+            report["id_number"] = {"status": "FAIL", "reason": "Permit number is missing."}
 
     else:
         report["id_number"] = {"status": "FAIL", "reason": f"No ID format check available for document type '{doc_type}'."}
