@@ -145,7 +145,7 @@ def extract_document(image_path):
         "nationality": extract_nationality(text),
         "date_of_birth": extract_dob(text),
         "date_of_issue": extract_issue_date(text),
-        "date_of_expiry": extract_expiry(text),
+        "expiry_date": extract_expiry(text),   # <-- renamed from "date_of_expiry"
         "ocr_confidence": confidence
     }
 
