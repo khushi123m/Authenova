@@ -1,15 +1,4 @@
-from sentence_transformers import SentenceTransformer
-
-model = SentenceTransformer('all-MiniLM-L6-v2')
-
-sentence = "The passport has expired."
-embedding = model.encode(sentence)
-
-print(embedding)
-print(len(embedding))
-
 from sentence_transformers import SentenceTransformer, util
-
 model = SentenceTransformer('all-MiniLM-L6-v2')
 
 sentence1 = "The passport has expired."
@@ -103,46 +92,41 @@ print("Best match:", result_entry["id"])
 print("Text:", result_entry["text"])
 print("Similarity score:", result_score)
 
-import os
-from openai import OpenAI
-
-api_key = os.environ.get("OPENAI_API_KEY")
-
-if api_key:
-    client = OpenAI(api_key=api_key)
-else:
-    client = None
-
 
 def generate_grounded_explanation(query_text, retrieved_entry):
-    # Fallback: no API key set up, so just return the raw retrieved reference directly.
-    if client is None:
-        return f"[Reference] {retrieved_entry['text']}"
 
-    prompt = f"""You are helping explain a document screening result to a border officer.
+    if "expired" in query_text.lower():
+        return "The document has exceeded its validity period and should be considered invalid."
 
-Flagged issue: {query_text}
+    elif "passport" in query_text.lower():
+        return "The passport number does not match the expected format and requires verification."
 
-Relevant rule: {retrieved_entry["text"]}
+    elif "aadhaar" in query_text.lower():
+         return "The Aadhaar number format is invalid and may indicate an extraction or document issue."
 
-Write one short, clear sentence explaining this issue to the officer, based only on the rule above. Do not make up any information not present in the rule."""
+    elif "face" in query_text.lower():
+        return "The facial similarity score is low, indicating a possible identity mismatch."
 
-    try:
-        response = client.chat.completions.create(
-            model="gpt-4o-mini",
-            messages=[{"role": "user", "content": prompt}],
-            max_tokens=100
-        )
-        return response.choices[0].message.content
+    elif "tampering" in query_text.lower():
+        return "Evidence of digital tampering was detected and the document should be reviewed manually."
 
-    except Exception as error:
-        # If the API call fails for any reason (network issue, rate limit, etc.),
-        # don't crash — fall back to the raw reference instead.
-        return f"[Reference] {retrieved_entry['text']}"
-
+    else:
+        return retrieved_entry["text"]   
 
 query = "Document is expired on 2024-01-01."
-result_entry, result_score = retrieve_best_match(query, knowledge_base)
-explanation = generate_grounded_explanation(query, result_entry)
 
-print(explanation)
+result_entry, result_score = retrieve_best_match(
+    query,
+    knowledge_base
+)
+
+print("Best match:", result_entry["id"])
+print("Text:", result_entry["text"])
+print("Similarity score:", result_score)
+
+explanation = generate_grounded_explanation(
+    query,
+    result_entry
+)
+
+print("Explanation:", explanation)
